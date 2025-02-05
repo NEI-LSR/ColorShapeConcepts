@@ -5,7 +5,7 @@ Code needed for the paper "How Object Concepts are Represented and Decoded by th
 - Running searchlight cross decoding and other algorithms on this data
 - Generating rough versions of all figures in the paper
 
-Much of this code is dependent on the `neurotools` library (github: link), which contains core algorithms and utility functions. 
+Much of this code is dependent on the `neurotools` library ([github](https://github.com/spencer-loggia/neurotools)), which contains core algorithms and utility functions. 
 
 ## Structure:
 - analyze
