@@ -4,7 +4,7 @@ Code needed for the paper "The representation of object concepts across the brai
 - Code for running searchlight cross decoding and other algorithms
 - Generating rough versions of figures in the paper
 
-Much of this code is dependent on the `neurotools` library ([github](https://github.com/spencer-loggia/neurotools)), which contains core algorithms and utility functions. 
+Much of this code is dependent on our `neurotools` library ([github](https://github.com/spencer-loggia/neurotools)), which contains core algorithms and utility functions. 
 
 ## Structure:
 - analyze
