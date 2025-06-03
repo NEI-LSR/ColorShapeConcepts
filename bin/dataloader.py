@@ -197,13 +197,7 @@ class TrialDataLoader:
         class_options = set(pd.unique(data["condition_integer"]).tolist())
         options = sorted(list(class_options - set(self.ignore_class)))
 
-        # balance dataset by oversampling
-        count = 0
-        for c in options:
-            print("set", id, "class", c, "loaded w/",
-                  (data["condition_integer"] == c).sum())
-            count += (data["condition_integer"] == c).sum()
-        print("USED", id, "blocks", count)
+        # get standard affine for niis
         nii = nib.load(
             os.path.join(self.content_root, eval(data["beta_path"][0])[0]))
         self.full_size = nii.get_fdata().shape
@@ -266,7 +260,7 @@ class TrialDataLoader:
         return out
 
     def data_generator(self, dset, noise_frac_var=.1, spatial_translation_var=.33, max_base_examples=1,
-                       cube=True, get_sess_data=False, example_class=None):
+                       cube=True, get_sess_data=False, example_class=None, index_override=None):
         """
         Combines some random number of examples from one random class with random weight with some amount of random translation and noise
         Parameters
@@ -283,24 +277,34 @@ class TrialDataLoader:
         Returns
         -------
         """
-        options = self.options
-        avail_options = list(set(pd.unique(dset["condition_integer"])).intersection(set(options)))
-        if example_class is None:
-            example_class = int(random.choice(avail_options))  # which class will this be?
-        target = options.index(example_class)
-        basis_dim = np.random.randint(1, max_base_examples + 1)  # how many real examples to use as basis?
-        trajectory = np.random.random((basis_dim, 1, 1, 1, 1))  # weight vector for combining basis
-        trajectory = trajectory / np.sum(trajectory)
-        class_dset = dset[dset['condition_integer'] == example_class]
-        if len(class_dset) == 0:
-            return -1
-        names = class_dset['condition_name']
-        basis_idxs = np.random.randint(0, len(class_dset), size=(basis_dim,))
-        if self.verbose:
-            print("chose class", example_class, "desc", names.iloc[int(basis_idxs[0])], "basis examples",
-                  len(class_dset))
+        if index_override is None:
+            options = self.options
+            avail_options = list(set(pd.unique(dset["condition_integer"])).intersection(set(options)))
+            if example_class is None:
+                example_class = int(random.choice(avail_options))  # which class will this be?
+            target = options.index(example_class)
+            basis_dim = np.random.randint(1, max_base_examples + 1)  # how many real examples to use as basis?
+            trajectory = np.random.random((basis_dim, 1, 1, 1, 1))  # weight vector for combining basis
+            trajectory = trajectory / np.sum(trajectory)
+            class_dset = dset[dset['condition_integer'] == example_class]
+            if len(class_dset) == 0:
+                return -1
+            names = class_dset['condition_name']
+            basis_idxs = np.random.randint(0, len(class_dset), size=(basis_dim,))
+            if self.verbose:
+                print("chose class", example_class, "desc", names.iloc[int(basis_idxs[0])], "basis examples",
+                      len(class_dset))
 
-        data = class_dset.iloc[basis_idxs]
+            data = class_dset.iloc[basis_idxs]
+        else:
+            basis_idxs = np.array([index_override])
+            trajectory = np.ones((1, 1, 1, 1, 1))
+            data = dset.iloc[basis_idxs]
+            condint = int(data["condition_integer"])
+            if condint not in self.options:
+                return -1
+            target = self.options.index(condint)
+
         chosen_index = data.index[0]
         sessions = data["session"]
         beta_coef = []
@@ -357,19 +361,26 @@ class TrialDataLoader:
         else:
             return beta, target, chosen_index
 
-    def get_batch(self, bs, odset, resample=False, cube=True, start_from_class=0):
+    def get_batch(self, bs, odset, resample=False, cube=True, start_from_class=0, randomize=True):
         beta_coef = []
         targets = []
         sess_data = []
         dset = copy.copy(odset)
         pre_target = np.arange(int(bs)) + start_from_class
         pre_target = pre_target % len(self.options)
+
         for j in range(int(bs)):
-            example = self.options[pre_target[j]]
+            if randomize:
+                example = self.options[pre_target[j]]
+                ind_override = None
+            else:
+                example = None
+                ind_override = j
             if resample:
                 if self.return_meta:
                     res = self.data_generator(dset, noise_frac_var=0.0, spatial_translation_var=0.0,
-                                              max_base_examples=1, cube=cube, get_sess_data=True, example_class=example)
+                                              max_base_examples=1, cube=cube, get_sess_data=True, example_class=example,
+                                              index_override=ind_override)
                     if res == -1:
                         continue
                     beta, target, data, used_index = res
@@ -377,7 +388,8 @@ class TrialDataLoader:
 
                 else:
                     res = self.data_generator(dset, noise_frac_var=0.0, spatial_translation_var=0.0,
-                                              max_base_examples=1, cube=cube, example_class=example)
+                                              max_base_examples=1, cube=cube, example_class=example,
+                                              index_override=ind_override)
                     if res == -1:
                         continue
                     beta, target, used_index = res
@@ -385,14 +397,16 @@ class TrialDataLoader:
                 # need to apply some degree of spline resampling
                 if self.return_meta:
                     res = self.data_generator(dset, noise_frac_var=0.0, spatial_translation_var=0.00,
-                                              max_base_examples=1, cube=cube, get_sess_data=True, example_class=example)
+                                              max_base_examples=1, cube=cube, get_sess_data=True, example_class=example,
+                                              index_override=ind_override)
                     if res == -1:
                         continue
                     beta, target, data, used_index = res
                     sess_data += data
                 else:
                     res = self.data_generator(dset, noise_frac_var=0.0, spatial_translation_var=0.00,
-                                              max_base_examples=1, cube=cube, example_class=example)
+                                              max_base_examples=1, cube=cube, example_class=example,
+                                              index_override=ind_override)
                     if res == -1:
                         continue
                     beta, target, used_index = res
@@ -405,13 +419,12 @@ class TrialDataLoader:
                     dset = copy.copy(odset)
         targets = np.array(targets, dtype=int)
         beta_coef = np.stack(beta_coef, axis=0)
-        # brain = np.abs(feature_mean) > .5
         if self.return_meta:
             return beta_coef, targets, sess_data
         else:
             return beta_coef, targets
 
-    def data_queuer(self, dset, bs, num_batches, resample, standardize, q, cube=True, start_from=0):
+    def data_queuer(self, dset, bs, num_batches, resample, q, cube=True, start_from=0):
         cur_start = start_from
         while self._processed_ < num_batches:
             try:
@@ -430,12 +443,8 @@ class TrialDataLoader:
                 del targets
                 exit(0)
 
-    def batch_iterator(self, data_type="all", mode="train", fold=None, num_train_batches=1000, return_all=False,
-                       standardize=False, resample=True, n_workers=16, cube=True, meta_data=False):
-        if meta_data:
-            self.return_meta = True
-        else:
-            self.return_meta = False
+    def batch_iterator(self, data_type="all", mode="train", fold=None, num_train_batches=1000,
+                       resample=True, n_workers=16, cube=True, random=True):
         try:
             if fold is None or self.cv_folds <= 1 or mode == "all":
                 dset = self.full_sets[data_type]
@@ -447,25 +456,25 @@ class TrialDataLoader:
                 raise ValueError
         except AttributeError:
             raise ValueError("This dataset was not defined.")
+        batch_num = 0
+        if not random:
+            print("WARNING: Random is False. Returning fold in order, w/o sampling or balancing")
+            n_workers = 1  # can't use mp if deterministic in current implimentation
+            num_train_batches = (len(dset) // self.batch_size)
 
-        if return_all:
-            bs = len(dset)
-        else:
-            bs = self.batch_size
+        bs = self.batch_size
         self._processed_ = 0
         context = mp.get_context("spawn")
         q = context.Queue(maxsize=self._max_q_size_)
         workers = []
         use_mp = n_workers > 1
-        # dset = util.balance_classes(dset, "condition_integer")
         if use_mp:
             # Divide the dset into a chunk for each worker
             for i in range(n_workers):
                 p = context.Process(target=self.data_queuer,
-                                    args=(dset, bs, num_train_batches, resample, standardize, q, cube, i))
+                                    args=(dset, bs, num_train_batches, resample, cube, i))
                 p.start()
                 workers.append(p)
-
         for i in range(num_train_batches):
             if use_mp:
                 try:
@@ -481,10 +490,18 @@ class TrialDataLoader:
                 else:
                     beta_coef, targets = res
             else:
-                if self.return_meta:
-                    beta_coef, targets, data = self.get_batch(bs, dset, resample=resample, cube=cube, )
+                if not random:
+                    if bs * batch_num > len(dset):
+                        break
+                    d = dset.iloc[bs * i:(i + 1) * bs]
                 else:
-                    beta_coef, targets = self.get_batch(bs, dset, resample=resample, cube=cube, )
+                    d = dset
+                if self.return_meta:
+                    beta_coef, targets, data = self.get_batch(bs, d, resample=resample, cube=cube,
+                                                              randomize=random)
+                else:
+                    beta_coef, targets = self.get_batch(bs, d, resample=resample, cube=cube,
+                                                        randomize=random)
             if self.return_meta:
                 yield beta_coef, targets, data
             else:
