@@ -3,11 +3,10 @@ import os
 
 
 CONTENT_ROOT = "../data"
-SUBJECTS = ["wooster"]
-MODEL = "../results/models/wooster_FLS___both__2025-03-07_08-58"
+SUBJECTS = ["jeeves"]
+MODEL = "../results/models/jeeves_FLS"
 
-_set_types = ["shape", "color"]
-_map_types = ["acc", "sal"]
+_set_types = ["color", "shape"]
 
 if not os.path.exists(MODEL):
     raise FileExistsError("Model directory not found. Run searchlight first.")
@@ -18,6 +17,8 @@ for subject in SUBJECTS:
 
     for inset in _set_types:
         set_dir = os.path.join(subj_dir, inset)
+        if not os.path.exists(set_dir):
+            continue
         out_dir = os.path.join(set_dir, "surface_overlays")
         if not os.path.exists(out_dir):
             os.mkdir(out_dir)
