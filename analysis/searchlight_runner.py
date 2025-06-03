@@ -6,7 +6,6 @@ from neurotools import decoding
 import numpy as np
 from dataloader import TrialDataLoader
 import nibabel as nib
-import datetime
 from matplotlib import pyplot as plt
 
 """
@@ -117,11 +116,10 @@ if __name__ == '__main__':
                    "icc": "incorrect_choice"}
 
         # Create a directory to save everything from this model run in.
-        name = SUBJECT + "_LSDM_" + "_" + "_" + ITEM_SET + str(
-            datetime.datetime.now())[:-10].replace(" ", "_").replace(":", "-")
+        name = SUBJECT + "_LSDM"
 
         if LOAD is None:
-            out_root = os.path.join(CONTENT_ROOT, "analysis", "decoding", "models", name)
+            out_root = os.path.join(CONTENT_ROOT, "results", "models", name)
             os.mkdir(out_root)
         else:
             out_root = LOAD
