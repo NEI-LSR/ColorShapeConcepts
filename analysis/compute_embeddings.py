@@ -1,9 +1,9 @@
 import os
 import pickle
 import pandas as pd
-from neurotools import decoding
+from neurotools import decoding, util, geometry
 import numpy as np
-from bin.dataloader import TrialDataLoader
+from dataloader import TrialDataLoader
 import nibabel as nib
 
 
@@ -15,7 +15,7 @@ In each ROI, will be weighted be weighted some of normalized latent space distan
 if __name__ == '__main__':
     # exp setup
     # Model path to load
-    LOAD = "/home/bizon/shared/isilon/PROJECTS/ColorShapeContingency1/MTurk1/analysis/decoding/models/jeeves_FLS___both_IC_2025-03-14_07-16"
+    LOAD = "/home/bizon/shared/isilon/PROJECTS/ColorShapeContingency1/MTurk1/analysis/decoding/models/jeeves_FLS___both_IC_2025-04-14_19-40"
     # Subjects to fit. Will do each in series.
     SUBJECT = 'jeeves'
     # time.sleep(7200)
@@ -27,15 +27,15 @@ if __name__ == '__main__':
 
     # model hyperparams
     # number of epochs per set.
-    EPOCHS = 100
+    EPOCHS = 1
     # Leave pairwise as true for now.
     STRATEGY = "pairwise"
     # batch size for model. Set to the biggest value that will fit in GPU memory
-    BATCH_SIZE = 30
+    BATCH_SIZE = 100
     # number of cross validation folds.
-    CV_FOLDS = 5
+    CV_FOLDS = 8
     # number of iterations. Will proceed to next CV fold on each iteration.
-    n = 5
+    n = 8
     # class sets to consider. Not important if not doing exemplar decoding. (i.e. don't ignore any classes)
     ITEM_SETS = ["both"]
     # number of channels in input data
@@ -43,14 +43,14 @@ if __name__ == '__main__':
     # device to use for models. Will be mad slow on CPU.
     DEV = "cuda"
     # Dataloader workers to use. USE 1 IF DEBUGGGING! otherwise >10 is good and fast if you have sufficient cpu ram.
-    NUM_WORKERS = 10
+    NUM_WORKERS = 1
     # If loading existing model, whether to train the searchlight for additional epochs, otherwise go straight to eval.
     RETRAIN = False
     # # whether to evaluate model performance by session, keep false if not using session info
     SEND_SESSIONS = False
     # Whether to compute standard RSA rdms instead of model based (we'll still initialize an untrained model to access
     # its data management tools)
-    USE_MODEL = True
+    USE_MODEL = False
 
     if STRATEGY not in ["multiclass", "pairwise"]:
         raise ValueError
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     seed = 34
     DATA_KEY_PATH = CONTENT_ROOT + "/subjects/" + SUBJECT + "/analysis/shape_color_attention_decodemk2_nohighvar_stimulus_response_data_key.csv"
     FT = CONTENT_ROOT + "/subjects/" + SUBJECT + "/mri/functional_target.nii.gz"
-    ROI_ATLAS = CONTENT_ROOT + "/subjects/" + SUBJECT + "/rois/major_divisions/final_atlas.nii.gz"
+    ROI_ATLAS = CONTENT_ROOT + "/subjects/" + SUBJECT + "/rois/major_divisions/final_atlas_old.nii.gz"
     ROI_LOOKUP = CONTENT_ROOT + "/subjects/" + SUBJECT + "/rois/major_divisions/lookup_match.txt"
     subj_dir = os.path.join(out_root, SUBJECT)
     try:
@@ -235,18 +235,18 @@ if __name__ == '__main__':
                 # evaluate fit for all
                 if USE_MODEL:
                     test_set = MTurk1.batch_iterator(dl_x_set, resample=False,
-                                                     num_train_batches=10,
+                                                     num_train_batches=1,
                                                      n_workers=NUM_WORKERS,
                                                      standardize=True, mode="test", fold=boot % int(CV_FOLDS),
-                                                     stat_override=stats, meta_data=SEND_SESSIONS)
+                                                     stat_override=stats, meta_data=SEND_SESSIONS, random=False)
                     # WARM UP Batch Normalizers
                     x_decoder.predict(test_set)
 
                 test_set = MTurk1.batch_iterator(dl_x_set, resample=False,
-                                                 num_train_batches=max(EPOCHS, 10),
+                                                 num_train_batches=1,
                                                  n_workers=NUM_WORKERS,
                                                  standardize=True, mode="test", fold=boot % int(CV_FOLDS),
-                                                 stat_override=stats, meta_data=SEND_SESSIONS)
+                                                 stat_override=stats, meta_data=SEND_SESSIONS, random=False)
                 # get latent embedding of each class in each roi
                 rdm, rrdms = x_decoder.get_latent(test_set, metric="pearson", voxelwise=voxelwise)
                 roi_indexes = x_decoder.roi_indexes
