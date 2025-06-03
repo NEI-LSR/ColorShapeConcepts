@@ -15,7 +15,7 @@ In each ROI, will be weighted be weighted some of normalized latent space distan
 if __name__ == '__main__':
     # exp setup
     # Model path to load
-    LOAD = "/home/bizon/shared/isilon/PROJECTS/ColorShapeContingency1/MTurk1/analysis/decoding/models/jeeves_FLS___both_IC_2025-04-14_19-40"
+    LOAD = "results/models/jeeves_LSDM"
     # Subjects to fit. Will do each in series.
     SUBJECT = 'jeeves'
     # time.sleep(7200)
@@ -48,13 +48,13 @@ if __name__ == '__main__':
     RETRAIN = False
     # # whether to evaluate model performance by session, keep false if not using session info
     SEND_SESSIONS = False
-    # Whether to compute standard RSA rdms instead of model based (we'll still initialize an untrained model to access
+    # If TRUE use trained LSDM latent space. if FALSE compute standard RSA rdms instead of model based (we'll still initialize an untrained model to access
     # its data management tools)
-    USE_MODEL = False
+    USE_MODEL = True
 
     if STRATEGY not in ["multiclass", "pairwise"]:
         raise ValueError
-    CONTENT_ROOT = "/home/bizon/shared/isilon/PROJECTS/ColorShapeContingency1/MTurk1"
+    CONTENT_ROOT = "data"
 
     # Initial dictionary ot hold results:
     # we get one line for each model fit
