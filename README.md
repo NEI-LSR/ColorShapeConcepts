@@ -8,7 +8,7 @@ Much of this code is dependent on our `neurotools` library ([github](https://git
 
 ## File Descriptions:
 - analyze
-  - `searchlight_runner.py`: contructs the LSDM (or standard searchlight), connects the LSDM to the fMRI dataloader that feed trial data and labels, runs cross validation procedure (identity and cross decoding), saves results to csv. Configuration can be changed at the top of the file. 
+  - `searchlight_runner.py`: contructs the LSDM (or standard searchlight), connects the LSDM to the fMRI dataloader that feed trial data and labels, runs cross validation procedure (identity and cross decoding), saves results to csv. Configuration can be changed at the top of the file. Takes ~8 hours to run on a GTX 4090TI GPU.
   - `simulation_runner.py`: contrusts an LSDM and standard searchlight, connects to the simulation dataloader, for different input set sizes preforms cross validated indentity and cross decoding of the simulated data for both models and saves the results to csv.
   - `compute_embeddings.py`: Given a trained LSDM output directory (containing binaries of trained models on each CV fold), computes the representational dissimilarity matrices for each ROI in the LSDM latent space (see paper methods) and saves them as npy files with a cssv key.
   - `analysisRL.m`: fits reinforcement learning models to behavioral data (long-term memory trials done on touchscreen tablets), and saves fits as .mat files and RL parameters in a csv
@@ -53,7 +53,7 @@ Fitting the searchlight model in a reasonable amount of time requires a nvidia G
 All of these python packages should be installed in you local environment.
 
 ## Loading data
-Project data can be downloaded from figshare: https://figshare.com/projects/Color_Shape_Concepts_Data/255242 
+Project data can be downloaded from figshare: https://figshare.com/projects/Datasets_for_The_representation_of_object_concepts_across_the_brain_/255242
 
 This data can be put into the proper directory structure by downloading the zip file for each separate experiment into 
 this root of this repository, and then running the `collect_from_figshare.sh` shell script to generate the `data` directory.
