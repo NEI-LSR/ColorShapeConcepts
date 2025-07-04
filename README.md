@@ -6,9 +6,9 @@ Code needed for the paper "The representation of object concepts across the brai
 
 Much of this code is dependent on our `neurotools` library ([github](https://github.com/spencer-loggia/neurotools)), which contains core algorithms and utility functions. 
 
-## Structure:
+## File Descriptions:
 - analyze
-  - `searchlight_runner.py`: contructs the LSDM (or standard searchlight), connects the LSDM to the fMRI dataloader that feed trial data and labels, runs cross validation procedure (identity and cross decoding), saves results to csv
+  - `searchlight_runner.py`: contructs the LSDM (or standard searchlight), connects the LSDM to the fMRI dataloader that feed trial data and labels, runs cross validation procedure (identity and cross decoding), saves results to csv. Configuration can be changed at the top of the file. 
   - `simulation_runner.py`: contrusts an LSDM and standard searchlight, connects to the simulation dataloader, for different input set sizes preforms cross validated indentity and cross decoding of the simulated data for both models and saves the results to csv.
   - `compute_embeddings.py`: Given a trained LSDM output directory (containing binaries of trained models on each CV fold), computes the representational dissimilarity matrices for each ROI in the LSDM latent space (see paper methods) and saves them as npy files with a cssv key.
   - `analysisRL.m`: fits reinforcement learning models to behavioral data (long-term memory trials done on touchscreen tablets), and saves fits as .mat files and RL parameters in a csv
@@ -34,5 +34,33 @@ Much of this code is dependent on our `neurotools` library ([github](https://git
 - data: an empty directory where you are expected to place project data from data repository in order to easily run analysis code on it.
 - results: an empty directory that will save intermediate results from analysis scripts before visualization (e.g. csv files of accuracy in each ROI for each CV fold)
 - figures: directory to hold visualization scripts svg outputs. 
+
+## Software Used
+- only tested on Ubuntu 22.04 LTS
+- python==3.12.4
+- numpy==1.26.4
+- scipy==1.12.0
+- pandas==2.2.2
+- matplotlib==3.8.4
+- scikit-learn==1.5.1
+- scikit-image==0.24.0
+- nibabel==5.2.1
+- nilearn==0.8.2
+- torch==2.7.0
+- neurotools==0.0.2
+
+Fitting the searchlight model in a reasonable amount of time requires a nvidia GPU. We used a GTX 4090TI. 
+All of these python packages should be installed in you local environment.
+
+## Loading data
+Project data can be downloaded from figshare: https://figshare.com/projects/Color_Shape_Concepts_Data/255242 
+
+This data can be put into the proper directory structure by downloading the zip file for each separate experiment into 
+this root of this repository, and then running the `collect_from_figshare.sh` shell script to generate the `data` directory.
+The `searchlight_runner.py` script should then be able to properly find the data when run with the repository root as the
+working directory. 
+
+All other scripts should also be able to work with this directory structure. 
+
 
   
