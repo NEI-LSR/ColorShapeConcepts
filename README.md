@@ -50,10 +50,11 @@ Much of this code is dependent on our `neurotools` library ([github](https://git
 - neurotools==0.0.2
 
 Fitting the searchlight model in a reasonable amount of time requires a nvidia GPU. We used a GTX 4090TI. 
-All of these python packages should be installed in you local environment.
+All of these python packages should be installed in your local environment.
 
 ## Loading data
 Project data can be downloaded from figshare: https://figshare.com/projects/Datasets_for_The_representation_of_object_concepts_across_the_brain_/255242
+_*currently contains data nessecary to run LSDM, other datasets are being added_
 
 This data can be put into the proper directory structure by downloading the zip file for each separate experiment into 
 this root of this repository, and then running the `collect_from_figshare.sh` shell script to generate the `data` directory.
