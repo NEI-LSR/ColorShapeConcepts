@@ -4,8 +4,9 @@ from matplotlib import pyplot as plt
 import numpy as np
 import math
 import pandas as pd
-from typing import Tuple
+from typing import Tuple, Optional
 import os
+import seaborn as sns
 # make sure text is saved in svgs as text, not path
 plt.rcParams['svg.fonttype'] = 'none'
 plt.rcParams['font.family'] = 'sans-serif'
@@ -130,6 +131,100 @@ def create_save_barplot(axs: plt.Axes, fig: plt.Figure, title: str, boot_data: n
     fig.savefig(os.path.join(out_dir, title + ".svg"))
     return fig
 
+
+def create_save_violinplot(
+        axs: plt.Axes,
+        fig: plt.Figure,
+        title: str,
+        boot_data: np.ndarray,
+        group_labels: Tuple[str],
+        xposition: float = 0.,
+        out_dir: str = "plots",
+        data_spread: str = "ci",
+        y_axis_label: Optional[str] = None,
+        set_size: Optional[Tuple[float, float]] = None,
+        ylim: Optional[Tuple[float, float]] = None,
+        rotate_x_labels: bool = False,
+        suppress_x_label: bool = False,
+        subgroup_labels: Optional[Tuple[str]] = None
+):
+    """
+    Creates and saves a grouped violin plot from bootstrapped data.
+    """
+    # --- Input Validation ---
+    if boot_data.ndim != 3:
+        raise ValueError("`boot_data` must be a 3D numpy array.")
+    if boot_data.shape[0] != len(group_labels):
+        raise ValueError("Mismatch between number of groups in `boot_data` and `group_labels`.")
+
+    user_provided_subgroups = subgroup_labels is not None
+    num_subgroups = boot_data.shape[1]
+    if subgroup_labels is None:
+        subgroup_labels = tuple(f"Subgroup {i + 1}" for i in range(num_subgroups))
+    elif len(subgroup_labels) != num_subgroups:
+        raise ValueError("Mismatch between number of subgroups in `boot_data` and `subgroup_labels`.")
+
+    if data_spread == "ci":
+        inner_style = "quartile"
+    elif data_spread == "full":
+        inner_style = "point"
+    else:
+        raise ValueError("`data_spread` must be one of ['ci', 'full']")
+
+    data_list = []
+    for i, group_data in enumerate(boot_data):
+        for j, subgroup_data in enumerate(group_data):
+            for value in subgroup_data:
+                data_list.append({
+                    'value': value,
+                    'group': group_labels[i],
+                    'subgroup': subgroup_labels[j]
+                })
+    df = pd.DataFrame(data_list)
+
+    #Plotting
+    palette = ["#686868", "#B8B8B8"]
+    sns.violinplot(
+        data=df, x='group', y='value', hue='subgroup',
+        split=False, ax=axs, palette=palette, inner=inner_style,
+        linewidth=0.8, saturation=1
+    )
+
+    # style
+    if y_axis_label:
+        axs.set_ylabel(y_axis_label, fontsize=6)
+
+    #  data range for ticks and labels
+    min_val, max_val = (df['value'].min(), df['value'].max())
+    if ylim is not None:
+        min_val, max_val = ylim
+
+    ytick = _compute_ticks(min_val, max_val, ax_pos=xposition)
+    axs.set_yticks(ytick, labels=[f"{yt}" for yt in ytick], fontsize=6)
+
+    # Set figure parameters, size
+    axs, fig = _set_fig_params(axs, fig, min_val, max_val, xposition)
+    if set_size is not None:
+        axs = _set_size(set_size[0], set_size[1], ax=axs)
+
+    global_min = boot_data.min()
+    rt = 45 if rotate_x_labels else 0
+    axs.set_xticklabels(labels=group_labels, rotation=rt, fontsize=6, y=global_min)
+    axs.set_xlabel('' if suppress_x_label else 'Groups')
+
+    if not user_provided_subgroups and axs.get_legend() is not None:
+        axs.get_legend().remove()
+    elif axs.get_legend() is not None:
+        handles, labels = axs.get_legend_handles_labels()
+        axs.legend(handles, labels, title=None, frameon=False, fontsize=6)
+
+    # save
+    os.makedirs(out_dir, exist_ok=True)
+    output_path = os.path.join(out_dir, title + ".svg")
+    fig.savefig(output_path, bbox_inches='tight')
+    print(f"Figure saved to {output_path}")
+
+    return fig
 
 def create_save_line_plot(axs: plt.Axes, fig: plt.Figure, title: str, boot_data: np.ndarray, group_labels: Tuple[str]=None,
                           x=None, ylim=None, xposition=0., yposition=0., out_dir="plots", set_size=None, save=True):
