@@ -132,26 +132,25 @@ def create_save_barplot(axs: plt.Axes, fig: plt.Figure, title: str, boot_data: n
     return fig
 
 
-def create_save_violinplot(
-        axs: plt.Axes,
-        fig: plt.Figure,
-        title: str,
-        boot_data: np.ndarray,
-        group_labels: Tuple[str],
-        xposition: float = 0.,
-        out_dir: str = "plots",
-        data_spread: str = "ci",
-        y_axis_label: Optional[str] = None,
-        set_size: Optional[Tuple[float, float]] = None,
-        ylim: Optional[Tuple[float, float]] = None,
-        rotate_x_labels: bool = False,
-        suppress_x_label: bool = False,
-        subgroup_labels: Optional[Tuple[str]] = None
+def create_save_boxplot(
+    axs: plt.Axes,
+    fig: plt.Figure,
+    title: str,
+    boot_data: np.ndarray,
+    group_labels: Tuple[str],
+    xposition: float = 0.,
+    out_dir: str = "plots",
+    data_spread: str = "ci",
+    y_axis_label: Optional[str] = None,
+    set_size: Optional[Tuple[float, float]] = None,
+    ylim: Optional[Tuple[float, float]] = None,
+    rotate_x_labels: bool = False,
+    suppress_x_label: bool = False,
+    subgroup_labels: Optional[Tuple[str]] = None
 ):
     """
-    Creates and saves a grouped violin plot from bootstrapped data.
+     whiskers are set to the 99% ci
     """
-    # --- Input Validation ---
     if boot_data.ndim != 3:
         raise ValueError("`boot_data` must be a 3D numpy array.")
     if boot_data.shape[0] != len(group_labels):
@@ -164,13 +163,6 @@ def create_save_violinplot(
     elif len(subgroup_labels) != num_subgroups:
         raise ValueError("Mismatch between number of subgroups in `boot_data` and `subgroup_labels`.")
 
-    if data_spread == "ci":
-        inner_style = "quartile"
-    elif data_spread == "full":
-        inner_style = "point"
-    else:
-        raise ValueError("`data_spread` must be one of ['ci', 'full']")
-
     data_list = []
     for i, group_data in enumerate(boot_data):
         for j, subgroup_data in enumerate(group_data):
@@ -182,19 +174,19 @@ def create_save_violinplot(
                 })
     df = pd.DataFrame(data_list)
 
-    #Plotting
-    palette = ["#686868", "#B8B8B8"]
-    sns.violinplot(
+    palette = ["lightgray", "gray"]
+    sns.boxplot(
         data=df, x='group', y='value', hue='subgroup',
-        split=False, ax=axs, palette=palette, inner=inner_style,
-        linewidth=0.8, saturation=1
+        ax=axs, palette=palette,
+        whis=[1., 99.],  # Set whiskers to 99% CI
+        fliersize=0.,      # Hide outliers beyond the CI whiskers
+        linewidth=0.4,
+        linecolor="black"
     )
 
-    # style
     if y_axis_label:
         axs.set_ylabel(y_axis_label, fontsize=6)
 
-    #  data range for ticks and labels
     min_val, max_val = (df['value'].min(), df['value'].max())
     if ylim is not None:
         min_val, max_val = ylim
@@ -202,8 +194,8 @@ def create_save_violinplot(
     ytick = _compute_ticks(min_val, max_val, ax_pos=xposition)
     axs.set_yticks(ytick, labels=[f"{yt}" for yt in ytick], fontsize=6)
 
-    # Set figure parameters, size
     axs, fig = _set_fig_params(axs, fig, min_val, max_val, xposition)
+
     if set_size is not None:
         axs = _set_size(set_size[0], set_size[1], ax=axs)
 
@@ -218,13 +210,13 @@ def create_save_violinplot(
         handles, labels = axs.get_legend_handles_labels()
         axs.legend(handles, labels, title=None, frameon=False, fontsize=6)
 
-    # save
     os.makedirs(out_dir, exist_ok=True)
     output_path = os.path.join(out_dir, title + ".svg")
     fig.savefig(output_path, bbox_inches='tight')
     print(f"Figure saved to {output_path}")
 
     return fig
+
 
 def create_save_line_plot(axs: plt.Axes, fig: plt.Figure, title: str, boot_data: np.ndarray, group_labels: Tuple[str]=None,
                           x=None, ylim=None, xposition=0., yposition=0., out_dir="plots", set_size=None, save=True):
