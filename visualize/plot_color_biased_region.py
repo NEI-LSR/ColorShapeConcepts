@@ -11,7 +11,7 @@ from bin import plotter
 
 # Set paths
 data_dir = 'results/passive' # where the csvs containing data to plot are
-out_dir = 'figures/figs4'
+out_dir = 'figures/figs8'
 
 plot_sep = False
 

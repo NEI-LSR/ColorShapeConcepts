@@ -15,7 +15,7 @@ content_root = 'data' # where are the data stored change this
 subj_root = os.path.join(content_root, 'subjects', subject) # where is that subject's data
 
 # Set out directory
-outdir = 'results/passive'  change this
+outdir = 'results/passive' 
 
 # LOAD DATA KEYS pointing to nifti beta weight images for each condition on each run
 # for passive task 1 and for eccentricity 
@@ -29,8 +29,6 @@ dyloc_mod_dir = os.path.join(subj_root, 'analysis', 'dyloc')
 
 # Eccentricity
 ecc_mod_dir = os.path.join(subj_root, 'analysis', 'ecc')
-ecc_beta_coeffs_key = pd.read_csv(os.path.join(subj_root, 'analysis', 'eccentricity_mapper_beta_coeffs_key.csv'))
-
 
 # GENERATE ROI DEFINITIONS
 # Load subject's atlas parcels
