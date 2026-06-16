@@ -23,12 +23,9 @@ out_dir = 'results/learning'
 tasks = ['Probe_4AFC', 'Train_2AFC_idtrials', 'Train_4AFC']
 last_n_trials = 1000 # calculate accuracy and confidence interval in the last 1000 trials
 n_boots = 1000 # number of bootstrap iterations
+use_subjects = ['w', 'je']
 # For each task
 for task in tasks:
-    if task == 'Train_2AFC_idtrials':
-        use_subjects = ['w', 'je'] # Jo did not receive these trials
-    else:
-        use_subjects = ['w', 'je', 'jo']
     plateau_perform = []
     # For each subject
     for subject in use_subjects:
