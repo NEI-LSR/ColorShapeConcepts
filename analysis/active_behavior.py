@@ -8,7 +8,7 @@ from bin import plotter
 # %%
 SUBJECT = "wooster"
 CONTENT_ROOT = "data"
-DATA_KEY_PATH = CONTENT_ROOT + "/subjects/" + SUBJECT + "/analysis/shape_color_attention_decodemk2_nohighvar_stimulus_response_data_key.csv"
+DATA_KEY_PATH = CONTENT_ROOT + "/subjects/" + SUBJECT + "/analysis/shape_color_attention_data_key.csv"
 IN_SETS = ['shape', 'color']
 behavior_mode = [None, None]
 if SUBJECT == 'wooster':
