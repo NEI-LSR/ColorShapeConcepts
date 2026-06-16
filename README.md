@@ -8,7 +8,7 @@ Much of this code is dependent on our `neurotools` library ([github](https://git
 
 ## File Descriptions:
 - analyze
-  - `searchlight_runner.py`: contructs the LSDM (or standard searchlight), connects the LSDM to the fMRI dataloader that feed trial data and labels, runs cross validation procedure (identity and cross decoding), saves results to csv. Configuration can be changed at the top of the file. Takes ~8 hours to run on a GTX 4090TI GPU.
+  - `searchlight_runner.py`: contructs the LSDM (or standard searchlight), connects the LSDM to the fMRI dataloader that feed trial data and labels, runs cross validation procedure (identity and cross decoding), saves results to csv. Configuration can be changed at the top of the file.
   - `simulation_runner.py`: contrusts an LSDM and standard searchlight, connects to the simulation dataloader, for different input set sizes preforms cross validated indentity and cross decoding of the simulated data for both models and saves the results to csv.
   - `compute_embeddings.py`: Given a trained LSDM output directory (containing binaries of trained models on each CV fold), computes the representational dissimilarity matrices for each ROI in the LSDM latent space (see paper methods) and saves them as npy files with a cssv key.
   - `bin_compute_confidence.py`: computes accuracies and confidence intervals for the touchscreen tablet behavioral data, and plots the accuracy over time learning curves shown in Fig. 1E and S1
