@@ -131,11 +131,25 @@ def load_betas(beta_coeffs_key, conditions_to_quant, content_root, subj_root):
         # For each condition you are interested in
         for cond in conditions_to_quant:
             # Load the condition betas image
-            cond_path = beta_coeffs_key[(beta_coeffs_key['session_ima']==run)&(beta_coeffs_key['condition']==cond)]['beta_path'].item()
-            try:
-                cond_data = nib.load(content_root + cond_path).get_fdata()
-            except:
-                cond_data = nib.load(cond_path).get_fdata() 
+            #cond_path = beta_coeffs_key[(beta_coeffs_key['session_ima']==run)&(beta_coeffs_key['condition']==cond)]['beta_path'].item()
+            run_split_redundant = str(run).split('_')
+            if len(run_split_redundant)==3:
+                cond_path = os.path.join(subj_root, 'sessions', run_split_redundant[0]+'_'+run_split_redundant[1], run_split_redundant[2], cond + '_beta_coeffs.nii.gz')
+            elif len(run_split_redundant)==4:
+                cond_path = os.path.join(subj_root, 'sessions', run_split_redundant[0]+'_'+run_split_redundant[1]+'_'+run_split_redundant[2], 
+                                         run_split_redundant[3], cond + '_beta_coeffs.nii.gz')
+            else:
+                print('cannot determine cond path')
+# =============================================================================
+#             try:
+#                 if cond_path[0:2]=='/s': # handle an os path join problem
+#                     cond_path = cond_path[1:]
+#                 cond_data = nib.load(os.path.join(content_root, cond_path)).get_fdata()
+#             except:
+#                 cond_data = nib.load(cond_path).get_fdata() 
+# =============================================================================
+            cond_data = nib.load(cond_path).get_fdata() 
+            print(cond_path)
             betas_3d.append([run, cond, cond_data])
     betas_df = pd.DataFrame(betas_3d, columns = ['run', 'condition', 'betas'])
     return betas_df
@@ -245,4 +259,4 @@ def get_top_vox(mod_dir, condition, prop, roi_def):
         masked_c_data = np.max(cond_masks, axis=0)
     top_prop = np.argpartition(masked_c_data, -n_top)[-n_top:] # get indices of top voxels
     top_roi_coords = tuple([[l[i] for i in range(len(l)) if i in top_prop] for l in roi_coords]) 
-    return top_roi_coords
+    return top_roi_coords, masked_c_data

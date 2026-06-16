@@ -10,12 +10,12 @@ import numpy as np
 from bin import passive_task_functions as pf
 
 # Choose subject
-subject = 'jeeves' # one of 'wooster', 'jeeves'
-content_root = 'data' # where are the data stored
+subject = 'wooster' # one of 'wooster', 'jeeves'
+content_root = 'data' # where are the data stored change this
 subj_root = os.path.join(content_root, 'subjects', subject) # where is that subject's data
 
 # Set out directory
-outdir = 'results/passive' 
+outdir = 'results/passive'  change this
 
 # LOAD DATA KEYS pointing to nifti beta weight images for each condition on each run
 # for passive task 1 and for eccentricity 
@@ -103,7 +103,14 @@ for p_top_voxel in reduce_top_voxel_prop:
 scp_betas = pf.load_betas(scp_beta_coeffs_key, 
                                  conditions_to_quant=['uncolored_shape', 'achromatic_shape', 'constant'], 
                                  content_root=content_root, subj_root=subj_root)
-
+scp_arrays = {}
+for i in range(len(scp_betas)):
+    namekey = scp_betas['run'][i] + '_' + scp_betas['condition'][i]
+    a=scp_betas['betas'][i]
+    scp_arrays[namekey] = a
+scpout = os.path.join('/mnt/isilon/PROJECTS/ColorShapeContingency1/data_files/univariate_data/save_out_betas', subject+'_scp_betas.npz')
+np.savez(scpout, **scp_arrays)
+    
 # Path to subject's masked funcitonal target; used for getting brain mask
 ft_path = os.path.join(subj_root, 'mri', 'functional_target.nii.gz') 
 
@@ -143,4 +150,4 @@ color_minus_noncolor['ca_bias_color_minus_noncolor'] = color_minus_noncolor['mea
 
 # Save file out
 color_minus_noncolor_out = os.path.join(outdir, subject+'_color_assoc_bias_colorbiased_minus_noncolorbiased.csv')
-color_minus_noncolor.to_csv(color_minus_noncolor_out, index=False)
+#color_minus_noncolor.to_csv(color_minus_noncolor_out, index=False)

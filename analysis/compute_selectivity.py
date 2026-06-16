@@ -12,9 +12,9 @@ import os
 import pandas as pd
 import nibabel as nib
 from bin import passive_task_functions as pf
-
+    
 # Choose subject
-subject = 'wooster' # one of 'wooster', 'jeeves'
+subject = 'jeeves' # one of 'wooster', 'jeeves'
 content_root = 'data' # where are the data stored
 subj_root = os.path.join(content_root, 'subjects', subject) # where is that subject's data
 
@@ -35,8 +35,6 @@ congruency_beta_coeffs_key = pd.read_csv(os.path.join(subj_root, 'analysis', 'sh
 # Eccentricity
 ecc_mod_dir = os.path.join(subj_root, 'analysis', 'ecc')
 ecc_beta_coeffs_key = pd.read_csv(os.path.join(subj_root, 'analysis', 'eccentricity_mapper_beta_coeffs_key.csv'))
-
-
 
 # GENERATE ROI DEFINITIONS
 # Load subject's atlas parcels
@@ -122,6 +120,7 @@ color_assoc_selectivity['comparison'] = 'uncolored_shape_vs_achromatic_shape'
 congruency_betas = pf.load_betas(congruency_beta_coeffs_key, 
                                  conditions_to_quant=['incongruent', 'congruent'], 
                                  content_root=content_root, subj_root=subj_root)
+
 incongruency_selectivity = pf.selectivity(congruency_betas,'incongruent', 'congruent', subdiv_rois_congruency)
 incongruency_selectivity = pd.DataFrame(incongruency_selectivity, columns = ['run', 'roi', 'effect'])
 incongruency_selectivity['comparison'] = 'incongruent_vs_congruent'

@@ -9,18 +9,18 @@ import os
 import pandas as pd
 import matplotlib.pyplot as plt
 from bin import plotter
-    
+
 # Set paths
 data_dir = 'results/passive' # where the csvs containing data to plot are
-out_dir = 'plots/fig4'
+out_dir = 'plots/fig5'
 
 combined = True
-individual = False
+individual = True
 
 # Define some useful functions
 def bootstrap_sel(w_df, je_df, plot_rois, boots=1000):
     """
-    Given selectivity dataframe output from 'compute_selectivity.py'
+    Given selectivity dataframe output from 'selectivity_in_ROI.py'
     bootstraps the selectivity values to get a bootstrapped estimate
     of the mean and 95 % confidence intervals
     """
@@ -65,14 +65,16 @@ def plot_bars_save_vals(arrs, names, para_name, group_labels, plot_size, out_dir
     """
     vals = []
     for i, a in enumerate(arrs):
-        title = names[i]+'_'+para_name
+        title = names[i]+'_'+para_name+'_box'
         fig, axs = plt.subplots(figsize=plot_size)
-        fig = plotter.create_save_barplot(axs, fig, title, a, 
+        fig = plotter.create_save_boxplot(axs, fig, title, a, 
                                           group_labels, xposition=0., 
                                     out_dir=out_dir, 
                                     data_spread="ci",
                                     set_size=plot_size,
-                                    rotate_x_labels=True)
+                                    rotate_x_labels=True,
+                                    y_axis_label=' ',
+                                    suppress_x_label=True)
         fig.show()
         for j, g in enumerate(a):
             effect = g.mean(axis=-1)[0]
@@ -96,7 +98,7 @@ for para in paradigms:
                                                             plot_rois=plot_rois, 
                                                             boots=1000)
     # Plot and save out means & 95 % CIs
-    plot_size = (0.9, 0.7)
+    plot_size = (1.,.8)#(0.9, 0.7)
     plot_arrs = []
     plot_names = []
     if combined:
