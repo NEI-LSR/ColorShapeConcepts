@@ -51,8 +51,7 @@ Fitting the searchlight model in a reasonable amount of time requires a nvidia G
 All of these python packages should be installed in your local environment.
 
 ## Loading data
-Project data can be downloaded from figshare: https://figshare.com/projects/Datasets_for_The_representation_of_object_concepts_across_the_brain_/255242
-_*currently contains data nessecary to run LSDM, other datasets are being added_
+Project data can be downloaded from figshare: [https://figshare.com/projects/Datasets_for_The_representation_of_object_concepts_across_the_brain_/255242](https://figshare.com/projects/Datasets_for_b_The_representation_of_long-term_color-shape_associations_across_the_macaque_brain_b_/255242)
 
 This data can be put into the proper directory structure by downloading the zip file for each separate experiment into 
 this root of this repository, and then running the `collect_from_figshare.sh` shell script to generate the `data` directory.
