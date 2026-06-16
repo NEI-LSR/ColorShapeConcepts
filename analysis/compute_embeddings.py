@@ -3,7 +3,7 @@ import pickle
 import pandas as pd
 from neurotools import decoding, util, geometry
 import numpy as np
-from dataloader import TrialDataLoader
+from bin.dataloader import TrialDataLoader
 import nibabel as nib
 
 
@@ -15,10 +15,9 @@ In each ROI, will be weighted be weighted some of normalized latent space distan
 if __name__ == '__main__':
     # exp setup
     # Model path to load
-    LOAD = "results/models/jeeves_LSDM"
+    LOAD = "results/models/jeevesLSDM"
     # Subjects to fit. Will do each in series.
     SUBJECT = 'jeeves'
-    # time.sleep(7200)
 
     # Identity (IN) and Cross (X) set pairs to use. Will fit model for each index in series.
     TRAIN_SETS = ["shape", "color"]
@@ -26,12 +25,10 @@ if __name__ == '__main__':
     TEST_MODES = [TRAIN_MODE] + ["cross"]
 
     # model hyperparams
-    # number of epochs per set.
-    EPOCHS = 1
     # Leave pairwise as true for now.
     STRATEGY = "pairwise"
     # batch size for model. Set to the biggest value that will fit in GPU memory
-    BATCH_SIZE = 100
+    BATCH_SIZE = 20
     # number of cross validation folds.
     CV_FOLDS = 8
     # number of iterations. Will proceed to next CV fold on each iteration.
@@ -50,7 +47,7 @@ if __name__ == '__main__':
     SEND_SESSIONS = False
     # If TRUE use trained LSDM latent space. if FALSE compute standard RSA rdms instead of model based (we'll still initialize an untrained model to access
     # its data management tools)
-    USE_MODEL = True
+    USE_MODEL = False
 
     if STRATEGY not in ["multiclass", "pairwise"]:
         raise ValueError
@@ -75,10 +72,10 @@ if __name__ == '__main__':
 
     out_root = LOAD
 
-    seed = 34
-    DATA_KEY_PATH = CONTENT_ROOT + "/subjects/" + SUBJECT + "/analysis/shape_color_attention_decodemk2_nohighvar_stimulus_response_data_key.csv"
+    seed = None
+    DATA_KEY_PATH = CONTENT_ROOT + "/subjects/" + SUBJECT + "/analysis/shape_color_attention_data_key.csv"
     FT = CONTENT_ROOT + "/subjects/" + SUBJECT + "/mri/functional_target.nii.gz"
-    ROI_ATLAS = CONTENT_ROOT + "/subjects/" + SUBJECT + "/rois/major_divisions/final_atlas_old.nii.gz"
+    ROI_ATLAS = CONTENT_ROOT + "/subjects/" + SUBJECT + "/rois/major_divisions/final_atlas.nii.gz"
     ROI_LOOKUP = CONTENT_ROOT + "/subjects/" + SUBJECT + "/rois/major_divisions/lookup_match.txt"
     subj_dir = os.path.join(out_root, SUBJECT)
     try:
@@ -94,12 +91,11 @@ if __name__ == '__main__':
 
     if SUBJECT == 'wooster':
         crop = CROP_WOOSTER
-        # ["scd_20230623", "scd_20230804", "scd_20230806", "scd_20230813", "scd_20230821", "scd_20230824"]
         bad = ["scd1_20240308", "scd2_20240308",
-               "scd_20230813", ]  # , "scd_20230806", "scd_20230824", "scd_20230804", "scd_20230813"]
+               "scd_20230813", ]
     elif SUBJECT == 'jeeves':
         crop = CROP_JEEVES
-        bad = []  # , "scd_20230918", "scd_20230813", "scd_20230919",
+        bad = []
         test_good = None
     else:
         exit(1)
@@ -139,7 +135,7 @@ if __name__ == '__main__':
                 BATCH_SIZE,
                 set_names=joined_set_names,
                 content_root=CONTENT_ROOT, ignore_class=ignore_classes, crop=crop,
-                cv_folds=int(CV_FOLDS), sep_class=False, std_by_feat=False, ignore_sessions=bad,
+                cv_folds=int(CV_FOLDS), ignore_sessions=bad,
                 mask=FT, seed=seed, cube=False, start_tr=1, end_tr=3,
                 behavior_mode=behavior_modes, override_use_sess=None)
             if boot == 0:
@@ -202,6 +198,15 @@ if __name__ == '__main__':
                 # delete un-needed memory overhead (hacky)
                 nx_decoder.conv_layers[0].weight = None
                 nx_decoder.conv_layers[0].bias = None
+
+                # make sure all roi stuff matches
+                nx_decoder.atlas = x_decoder.atlas
+                nx_decoder.seed = x_decoder.seed
+                nx_decoder.lookup = x_decoder.lookup
+                nx_decoder.roi_names = x_decoder.roi_names
+                nx_decoder.roi_indexes = x_decoder.roi_indexes
+                nx_decoder.num_rois = x_decoder.num_rois
+
                 voxelwise = True
 
                 # set stacking weights to loaded model (for combined ing spots)
@@ -237,16 +242,15 @@ if __name__ == '__main__':
                     test_set = MTurk1.batch_iterator(dl_x_set, resample=False,
                                                      num_train_batches=1,
                                                      n_workers=NUM_WORKERS,
-                                                     standardize=True, mode="test", fold=boot % int(CV_FOLDS),
-                                                     stat_override=stats, meta_data=SEND_SESSIONS, random=False)
+                                                     mode="test", fold=boot % int(CV_FOLDS), random=False)
                     # WARM UP Batch Normalizers
                     x_decoder.predict(test_set)
 
                 test_set = MTurk1.batch_iterator(dl_x_set, resample=False,
                                                  num_train_batches=1,
                                                  n_workers=NUM_WORKERS,
-                                                 standardize=True, mode="test", fold=boot % int(CV_FOLDS),
-                                                 stat_override=stats, meta_data=SEND_SESSIONS, random=False)
+                                                 mode="test", fold=boot % int(CV_FOLDS),
+                                                 random=False)
                 # get latent embedding of each class in each roi
                 rdm, rrdms = x_decoder.get_latent(test_set, metric="pearson", voxelwise=voxelwise)
                 roi_indexes = x_decoder.roi_indexes

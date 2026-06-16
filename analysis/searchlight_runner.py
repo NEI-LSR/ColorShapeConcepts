@@ -1,12 +1,15 @@
 import os
 import pickle
+import time
+
+import nibabel as nib
+import numpy as np
 import pandas as pd
 import torch
-from neurotools import decoding
-import numpy as np
-from dataloader import TrialDataLoader
-import nibabel as nib
 from matplotlib import pyplot as plt
+from neurotools import decoding
+
+from bin.dataloader import TrialDataLoader
 
 """
 This script runs fits the layered searchlight model on both color and shape fMRI data trials in a cross validated (CV)
@@ -24,51 +27,53 @@ if __name__ == '__main__':
     # exp setup
 
     """
-    !!! CONFIGURATION !!!
+    !!! CONFIGURATION !!!# 
     """
-
+    # time.sleep(60 * 60 * 12)
     # Subject to fit
-    SUBJECT = 'wooster'
+    SUBJECT = 'jeeves'
 
     # Identity (IN) and Cross (X) set pairs to use. Will fit model for each index in series.
     TRAIN_SETS = ["shape", "color"]
     TRAIN_MODE = "identity"
-    TEST_MODES = [TRAIN_MODE] + ["cross", "icc", "ict"]
+    TEST_MODES = [TRAIN_MODE] + ["cross",]  # cross, ict, icc
+
 
     # class sets to consider
     ITEM_SET = "both"
     # root of the data directory
+
     CONTENT_ROOT = "data"
 
     # model hyperparams
     # number of epochs per set.
-    EPOCHS = 2500
+    EPOCHS = 4000
     # Initial gradient learning rate
-    LR = .005
+    LR = .001 ## SET LOWERE
     # base convolutional kernel size
     KERNEL = 2
     # Number of searchlight layers (if N_LAYERS is 1, degenerates to logistic searchlight over KERNEL cube of input.)
     N_LAYERS = 4
-    # Weight dropout fraction
-    DROPOUT = 0.3
+    # Weight dropout
+    DROPOUT = 0.0
     # batch size for model. Set to the biggest value that will fit in GPU memory
-    BATCH_SIZE = 70
+    BATCH_SIZE = 20
     # number of channels in input data
     IN_CHAN = 2
 
     # Validation parameters
     # number of cross validation folds. Will always train on all but one and test on remaining.
-    CV_FOLDS = 5
+    CV_FOLDS = 8
     # whether to start at different fold
     start_fold = 0
     # number of iterations. Will proceed to next CV fold on each iteration.
-    n = 5
+    n = 8
 
     # Compute Parameters
     # device to use for models. Will be mad slow on CPU.
     DEV = "cuda"
     # Numer of Dataloader workers to use. USE 1 IF DEBUGGING! (usually) otherwise >10 is good if you have sufficient cpu ram.
-    NUM_WORKERS = 14
+    NUM_WORKERS = 1
 
     # Reload Arguments
     # path to existing model directory if loading existing. Otherwise, None.
@@ -76,6 +81,7 @@ if __name__ == '__main__':
     # If loading existing model, whether to train the searchlight for additional epochs, otherwise go straight to eval.
     FIT_SEARCH = True
     FIT_WEIGHTS = True
+
 
     if __name__ == "__main__":
         # Initial dictionary ot hold results:
@@ -116,15 +122,16 @@ if __name__ == '__main__':
                    "icc": "incorrect_choice"}
 
         # Create a directory to save everything from this model run in.
-        name = SUBJECT + "_LSDM"
+        name = SUBJECT + "LSDM"
 
         if LOAD is None:
-            out_root = os.path.join(CONTENT_ROOT, "results", "models", name)
-            os.mkdir(out_root)
+            out_root = os.path.join("results", "models", name)
+            if not os.path.exists(out_root):
+                os.mkdir(out_root)
         else:
             out_root = LOAD
 
-        seed = 34
+        seed = None
         DATA_KEY_PATH = CONTENT_ROOT + "/subjects/" + SUBJECT + "/analysis/shape_color_attention_data_key.csv"
         FT = CONTENT_ROOT + "/subjects/" + SUBJECT + "/mri/functional_target.nii.gz"
         ROI_ATLAS = CONTENT_ROOT + "/subjects/" + SUBJECT + "/rois/major_divisions/final_atlas.nii.gz"
@@ -137,7 +144,7 @@ if __name__ == '__main__':
 
         if SUBJECT == 'wooster':
             crop = CROP_WOOSTER
-            bad = ["scd1_20240308", "scd2_20240308", "scd_20230813",]  # excluded sessions
+            bad = ["scd1_20240308", "scd2_20240308", "scd_20230813",]  # excluded sessions due to scanner issues
             test_good = None
         elif SUBJECT == 'jeeves':
             crop = CROP_JEEVES
@@ -175,6 +182,7 @@ if __name__ == '__main__':
 
         # for each iteration we choose a new fold of the data.
         for boot in range(n):
+            ## SPECIAL CASE: REMOVE
             if (boot % CV_FOLDS) == 0:
                 seed += 42
                 MTurk1 = TrialDataLoader(
@@ -182,11 +190,10 @@ if __name__ == '__main__':
                     BATCH_SIZE,
                     set_names=tuple(joined_set_names),
                     content_root=CONTENT_ROOT, ignore_class=ignore_classes, crop=crop,
-                    cv_folds=int(CV_FOLDS), sep_class=False, std_by_feat=False, ignore_sessions=bad,
+                    cv_folds=int(CV_FOLDS), ignore_sessions=bad,
                     mask=FT, seed=seed, cube=False, start_tr=1, end_tr=3,
                     behavior_mode=behavior_modes,
-                    override_use_sess=test_good,
-                    permute=False)
+                    override_use_sess=test_good, use_next_cue=False)
 
                 if boot == 0:
                     atlas = MTurk1.crop_volume(atlas, cube=True)
@@ -248,7 +255,7 @@ if __name__ == '__main__':
                     x_decoder = decoding.ROISearchlightDecoder(atlas, lookup, set_names=SETS, in_channels=IN_CHAN,
                                                                n_classes=len(USE_CLASSES), spatial=SPATIAL, nonlinear=False,
                                                                device=DEV, base_kernel_size=KERNEL,
-                                                               n_layers=N_LAYERS, dropout_prob=0.4, seed=8,
+                                                               n_layers=N_LAYERS, dropout_prob=DROPOUT, seed=8,
                                                                share_conv=False, pairwise_comp=pair_weights,
                                                                combination_mode="stack", mask=MTurk1.mask,
                                                                smooth_kernel_sigma=0.)
@@ -266,8 +273,8 @@ if __name__ == '__main__':
                     x_decoder.train_predictors(TRAIN_MODE, False)
                     train_set = MTurk1.batch_iterator(dl_train_set, resample=False,
                                                       num_train_batches=max(EPOCHS, 1), n_workers=NUM_WORKERS,
-                                                      standardize=True, mode="train", fold=(boot + start_fold) % int(CV_FOLDS),
-                                                      stat_override=stats)
+                                                      mode="train", fold=(boot + start_fold) % int(CV_FOLDS))
+
                     sfit_hist = x_decoder.fit(train_set, lr=LR)
                     plt.plot(sfit_hist)
                     plt.savefig(os.path.join(boot_dir, str((boot + start_fold)) + "_searchlight_train_loss.svg"))
@@ -277,8 +284,7 @@ if __name__ == '__main__':
                     x_decoder.train_predictors(TRAIN_MODE, True)
                     train_set = MTurk1.batch_iterator(dl_train_set, resample=False,
                                                       num_train_batches=max(EPOCHS // 2, 1), n_workers=NUM_WORKERS,
-                                                      standardize=True, mode="train", fold=(boot + start_fold) % int(CV_FOLDS),
-                                                      stat_override=stats)
+                                                      mode="train", fold=(boot + start_fold) % int(CV_FOLDS))
                     pred_hist = x_decoder.fit(train_set, lr=LR)
                     plt.plot(pred_hist)
                     plt.savefig(os.path.join(boot_dir, str((boot + start_fold)) + "_weights_train_loss.svg"))
@@ -304,16 +310,14 @@ if __name__ == '__main__':
                     test_set = MTurk1.batch_iterator(dl_x_set, resample=False,
                                                      num_train_batches=max(EPOCHS // 30, 10),
                                                      n_workers=NUM_WORKERS,
-                                                     standardize=True, mode="test", fold=(boot + start_fold) % int(CV_FOLDS),
-                                                     stat_override=stats)
+                                                     mode="test", fold=(boot + start_fold) % int(CV_FOLDS))
                     x_decoder.predict(test_set)
 
                     # Evaluate
                     test_set = MTurk1.batch_iterator(dl_x_set, resample=False,
                                                      num_train_batches=max(EPOCHS // 15, 10),
                                                      n_workers=NUM_WORKERS,
-                                                     standardize=True, mode="test", fold=(boot + start_fold) % int(CV_FOLDS),
-                                                     stat_override=stats)
+                                                     mode="test", fold=(boot + start_fold) % int(CV_FOLDS))
                     roi_accs, acc_map, _ = x_decoder.predict(test_set)
 
                     sal_map = x_decoder.get_saliancy()

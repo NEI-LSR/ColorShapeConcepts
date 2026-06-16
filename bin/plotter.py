@@ -141,12 +141,14 @@ def create_save_boxplot(
     xposition: float = 0.,
     out_dir: str = "plots",
     data_spread: str = "ci",
-    y_axis_label: Optional[str] = None,
+    y_axis_label: Optional[str] = "",
     set_size: Optional[Tuple[float, float]] = None,
     ylim: Optional[Tuple[float, float]] = None,
     rotate_x_labels: bool = False,
-    suppress_x_label: bool = False,
-    subgroup_labels: Optional[Tuple[str]] = None
+    suppress_x_label: bool = True,
+    subgroup_labels: Optional[Tuple[str]] = None,
+    w_scale=1,
+    include_ytick=12
 ):
     """
      whiskers are set to the 99% ci
@@ -155,7 +157,8 @@ def create_save_boxplot(
         raise ValueError("`boot_data` must be a 3D numpy array.")
     if boot_data.shape[0] != len(group_labels):
         raise ValueError("Mismatch between number of groups in `boot_data` and `group_labels`.")
-
+    if y_axis_label is None:
+        y_axis_label = "value"
     user_provided_subgroups = subgroup_labels is not None
     num_subgroups = boot_data.shape[1]
     if subgroup_labels is None:
@@ -174,24 +177,24 @@ def create_save_boxplot(
                 })
     df = pd.DataFrame(data_list)
 
-    palette = ["lightgray", "gray"]
+    palette = ["white", "gray"]
     sns.boxplot(
         data=df, x='group', y='value', hue='subgroup',
         ax=axs, palette=palette,
-        whis=[1., 99.],  # Set whiskers to 99% CI
+        whis=[2.5, 97.5],  # Set whiskers to 99% CI
         fliersize=0.,      # Hide outliers beyond the CI whiskers
         linewidth=0.4,
         linecolor="black"
     )
 
-    if y_axis_label:
-        axs.set_ylabel(y_axis_label, fontsize=6)
+    axs.set_ylabel("", fontsize=6)
 
     min_val, max_val = (df['value'].min(), df['value'].max())
     if ylim is not None:
         min_val, max_val = ylim
 
     ytick = _compute_ticks(min_val, max_val, ax_pos=xposition)
+    ytick.append(include_ytick)
     axs.set_yticks(ytick, labels=[f"{yt}" for yt in ytick], fontsize=6)
 
     axs, fig = _set_fig_params(axs, fig, min_val, max_val, xposition)
@@ -201,7 +204,7 @@ def create_save_boxplot(
 
     global_min = boot_data.min()
     rt = 45 if rotate_x_labels else 0
-    axs.set_xticklabels(labels=group_labels, rotation=rt, fontsize=6, y=global_min)
+    axs.set_xticklabels(labels=[] if suppress_x_label else group_labels, rotation=rt, fontsize=6, y=global_min)
     axs.set_xlabel('' if suppress_x_label else 'Groups')
 
     if not user_provided_subgroups and axs.get_legend() is not None:

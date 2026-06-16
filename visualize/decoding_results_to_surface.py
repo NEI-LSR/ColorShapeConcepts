@@ -1,12 +1,12 @@
 from bin.functional_to_surface import functional2surface
 import os
 
-
+# update paths for desired subject.
 CONTENT_ROOT = "../data"
 SUBJECTS = ["jeeves"]
-MODEL = "../results/models/jeeves_FLS"
+MODEL = "../results/models/jeevesLSDM"
 
-_set_types = ["color", "shape"]
+_set_types = ["color", "shape", ""]
 
 if not os.path.exists(MODEL):
     raise FileExistsError("Model directory not found. Run searchlight first.")

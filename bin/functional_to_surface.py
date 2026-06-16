@@ -27,8 +27,8 @@ def functional2surface(subject, functional_nii, proj_root="data", output_dir="."
     indicator = '.nii.gz'
 
     # Anatomical target files, downsampled, and fulll resolution
-    t1_nifti = os.path.join(subject_root, 'mri', 'ds_T1.nii.gz')
-    us_t1_nifti = os.path.join(subject_root, 'mri', 'T1.nii.gz')
+    t1_nifti = os.path.join(subject_root, 'mri', 'ds_avT1.nii.gz')
+    us_t1_nifti = os.path.join(subject_root, 'mri', 'avT1.nii.gz')
 
     # Transform from functional to ds anatomical space
     fine_forward_transform = subject_root + '/mri/Composite.h5'

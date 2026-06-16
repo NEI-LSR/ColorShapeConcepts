@@ -2,6 +2,8 @@ import copy
 import math
 import queue
 import random
+
+from matplotlib import pyplot as plt
 from neurotools.support import StratifiedSampler
 import numpy as np
 import nibabel as nib
@@ -31,7 +33,7 @@ class TrialDataLoader:
     def __init__(self, key_path, batch_size, set_names=("all",), class_map=val_map, crop=((9, 73), (0, 40), (13, 77)),
                  content_root="./", device="cuda", ignore_sessions=(), ignore_class=(), seed=456789, cv_folds=5,
                  behavior_mode="correct", verbose=False, mask=None, return_meta_data=False, replace=True, cube=True,
-                 start_tr=1, end_tr=3, override_use_sess=None):
+                 start_tr=1, end_tr=3, override_use_sess=None, scramble=False, use_next_cue=False):
         """
         Parameters
         ----------
@@ -48,6 +50,7 @@ class TrialDataLoader:
                         - session: column to provide information about data collection, i.e. a key used to denote parts of data
                                    across which signal may vary in ways not relevant to task. We ensure sessions are evenly represented
                                    across the resampled dataset during cross validation.
+                        - next_condition (optional): The condition integer for the cue that directly follows the current trial.
         batch_size: <int> number of independent examples to serve in each batch.
         set_names: List[str, ...] which condition groups will we serve data for.
         class_map: Dict[int:int] used to remap conditon_integers to new values. For SCD, remaps paradigm indexes to shared 1-14 indexes. Must have a mapping
@@ -58,13 +61,15 @@ class TrialDataLoader:
         ignore_sessions: Sessions to exclude from dataset
         ignore_class: Class integers / Condition integers to exclude from dataset
         seed: Random seed for dataloader
-        cv_folds: default=5, How many cross validation folds are we using? defualt
+        cv_folds: default=5, How many cross validation folds are we using?
         behavior_mode: Union[str, tuple, list], ['all', 'correct', 'incorrect_true_label', 'incorrect_choice_label'] whether to return all trials, just those where monkey chose
                         correctly, or just those were monkey made a choice but it was incorrect - with either the ground truth label or the choice that was made.
         verbose
         mask: mask used to zero regions of input without signal.
         return_meta_data: whether to return session information for each batch
         cube: whether to for served data to be cubic on spatial dimensions.
+        scramble: used for control analysis, whether to return scrambled label values.
+        use_next_cue: used for control analysis, whehter to return the label ID of the following cue instead of the current (require next_condition col exists)
         """
         self.replace = replace
         self.return_meta = return_meta_data
@@ -74,6 +79,15 @@ class TrialDataLoader:
             data.drop("Unnamed: 0", axis=1, inplace=True)
         except KeyError:
             pass
+        self.use_next_cue = use_next_cue
+        if self.use_next_cue:
+            print("WARNING: using following instead of current cue ID.")
+            choice_data = data[data["condition_integer"] > 28]
+            data = data[data["condition_integer"] <= 28]
+            data["beta_path"] = data["beta_path"].combine(choice_data["beta_path"], lambda a, b: a + b)
+            self.data["condition_integer"] = self.data["next_condition"]
+            self.data = self.data[~self.data['condition_integer'].isnull()]
+
         # fix missing expected cols
         if "session" not in data.columns:
             sess_df = pd.DataFrame({"session": [None] * len(data)})
@@ -91,8 +105,12 @@ class TrialDataLoader:
         for ignore_sess in ignore_sessions:
             data = data[data["session"] != ignore_sess]
         data = data.sort_values(["session", "ima"])
-        self.data = data.sample(frac=1.0, ignore_index=True, random_state=seed + 3, replace=False).reset_index(
+        self.data = data.sample(frac=1.0, ignore_index=True, random_state=seed, replace=False).reset_index(
             drop=True)  # only shuffling step
+
+        # shuffle class labels randomly if shuffle
+        if scramble:
+            self.data["condition_integer"] = self.data["condition_integer"].sample(frac=1, replace=False).reset_index(drop=True)
 
         self.seed = seed
         self.batch_size = batch_size
@@ -110,7 +128,8 @@ class TrialDataLoader:
         size = tuple([t[1] - t[0] for t in crop])
 
         if mask is not None:
-            mask = self.crop_volume(nib.load(mask).get_fdata(), cube=False).astype(float)
+            mnii = nib.load(mask)
+            mask = self.crop_volume(mnii.get_fdata(), cube=False).astype(float)
             gaussian_filter(mask, sigma=1)
             self.mask = mask > .2 * mask.std()
         self.cv_folds = int(cv_folds)
@@ -219,7 +238,9 @@ class TrialDataLoader:
         :param data: 3 dimmensional array
         :return: 3 dimmensional array padded to full size
         """
-        full = np.zeros(self.full_size, dtype=float)
+        s = list(data.shape)
+        s[:3] = self.full_size
+        full = np.zeros(s, dtype=float)
         crop_size = self.shape
         crop = []
         for i, c in enumerate(self.crop):
@@ -231,26 +252,6 @@ class TrialDataLoader:
         full[self.crop[0][0]:self.crop[0][1], self.crop[1][0]:self.crop[1][1], self.crop[2][0]:self.crop[2][1]] = \
             data[crop[0][0]:crop[0][1], crop[1][0]:crop[1][1], crop[2][0]:crop[2][1]]
         return full
-
-    def clip_and_norm(self, x_in, example_normalization=False):
-        """
-        Parameters
-        ----------
-        input: <n, c, x, y, z>
-
-        Returns
-        -------
-        """
-        thresh_std = x_in[..., self.mask].std() * 6
-        x_in = np.clip(x_in, -1 * thresh_std, thresh_std)
-        ndims = x_in.ndim
-        # mask = self.mask.reshape(self.mask.shape)
-        mean = x_in[..., self.mask].reshape((len(x_in), -1)).mean(axis=1)  # mean across each trial
-        std = x_in[..., self.mask].reshape((len(x_in), -1)).std(axis=1)  # std across ech trial
-        x_in = (x_in - mean.reshape((-1,) + tuple([1] * (ndims - 1)))) / std.reshape((-1,) + tuple([1] * (ndims - 1)))
-        x_in = np.nan_to_num(x_in, nan=0., posinf=0., neginf=0.)
-        x_in[..., np.logical_not(self.mask)] = 0.
-        return x_in
 
     def crop_volume(self, input, cube=True):
         out = input[self.crop[0][0]:self.crop[0][1], self.crop[1][0]:self.crop[1][1],
@@ -316,8 +317,6 @@ class TrialDataLoader:
             if type(paths) is str:
                 paths = [paths]
             for path in paths[self.start_tr:self.end_tr]:
-                # selest unnormed path to test something.
-                # path = path.replace("mk2", "")
                 nam = os.path.basename(path)
                 path = os.path.join(os.path.dirname(path), nam)
                 if path not in self.set_mem:
@@ -345,7 +344,7 @@ class TrialDataLoader:
         beta = beta_coef.sum(axis=0)
         sess = []
         # normalize by class and session (combined over trajectory)
-        sess.append(sessions[0])
+        # sess.append(sessions[0])
         mask = self.pad_to_cube(self.mask)
         # mask!!
         beta[:, np.logical_not(mask)] = 0.
@@ -368,6 +367,7 @@ class TrialDataLoader:
         dset = copy.copy(odset)
         pre_target = np.arange(int(bs)) + start_from_class
         pre_target = pre_target % len(self.options)
+        example = None
 
         for j in range(int(bs)):
             if randomize:
@@ -459,7 +459,7 @@ class TrialDataLoader:
         batch_num = 0
         if not random:
             print("WARNING: Random is False. Returning fold in order, w/o sampling or balancing")
-            n_workers = 1  # can't use mp if deterministic in current implimentation
+            n_workers = 1  # can't use mp if deterministic in current implementation
             num_train_batches = (len(dset) // self.batch_size)
 
         bs = self.batch_size
@@ -472,9 +472,11 @@ class TrialDataLoader:
             # Divide the dset into a chunk for each worker
             for i in range(n_workers):
                 p = context.Process(target=self.data_queuer,
-                                    args=(dset, bs, num_train_batches, resample, cube, i))
+                                    args=(dset, bs, num_train_batches, resample, q,
+                                          cube, np.random.randint(0, len(self.options))))
                 p.start()
                 workers.append(p)
+        start_from = 0
         for i in range(num_train_batches):
             if use_mp:
                 try:
@@ -498,10 +500,11 @@ class TrialDataLoader:
                     d = dset
                 if self.return_meta:
                     beta_coef, targets, data = self.get_batch(bs, d, resample=resample, cube=cube,
-                                                              randomize=random)
+                                                              randomize=random, start_from_class=start_from)
                 else:
                     beta_coef, targets = self.get_batch(bs, d, resample=resample, cube=cube,
-                                                        randomize=random)
+                                                        randomize=random, start_from_class=start_from)
+                start_from = self.options[targets[-1]]
             if self.return_meta:
                 yield beta_coef, targets, data
             else:

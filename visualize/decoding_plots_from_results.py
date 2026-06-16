@@ -10,15 +10,15 @@ from typing import Tuple
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from utility import plotter
+from bin import plotter
 
 # make sure text is saved in svgs as text, not path
 plt.rcParams['svg.fonttype'] = 'none'
 
-out_path = "plots/fig2_decoding"
+out_path = "figures/decoding"
 
-generate_main = False
-generate_supp = True
+generate_main = True
+generate_supp = False
 
 supress_x_label = True # supress x labels so plotting is consistent
 
@@ -135,7 +135,7 @@ def generate_decoding_plots(csv_data, roi_names, output_dir='plots'):
         figure = plt.figure(dpi=300, figsize=(2.62, 0.82))
         ax = figure.add_axes(plt.axes())
         s_id_data = boots[:, None, ...]
-        figure = plotter.create_save_barplot(ax, figure, "shape_identity", s_id_data, roi_names, out_dir=out_path, ylim=(-3, 45))
+        figure = plotter.create_save_boxplot(ax, figure, "_mion_shape_identity", s_id_data, roi_names, out_dir=out_path, ylim=(-3, 45))
         figure.show()
 
 
@@ -147,7 +147,7 @@ def generate_decoding_plots(csv_data, roi_names, output_dir='plots'):
         figure = plt.figure(dpi=300, figsize=(2.62, 0.82))
         ax = figure.add_axes(plt.axes())
         c_id_data = boots[:, None, ...]
-        figure = plotter.create_save_barplot(ax, figure, "color_identity", c_id_data, roi_names, out_dir=out_path, ylim=(-3, 45))
+        figure = plotter.create_save_boxplot(ax, figure, "_mion_color_identity", c_id_data, roi_names, out_dir=out_path, ylim=(-3, 45))
         figure.show()
 
 
@@ -159,7 +159,7 @@ def generate_decoding_plots(csv_data, roi_names, output_dir='plots'):
         figure = plt.figure(dpi=300, figsize=(2.62, 0.82))
         ax = figure.add_axes(plt.axes())
         x_data = boots[:, None, ...]
-        figure = plotter.create_save_barplot(ax, figure, "both_cross", x_data, roi_names, out_dir=out_path, ylim=(-3, 14))
+        figure = plotter.create_save_boxplot(ax, figure, "_mion_both_cross", x_data, roi_names, out_dir=out_path, ylim=(-3, 15))
         figure.show()
 
 
@@ -171,7 +171,7 @@ def generate_decoding_plots(csv_data, roi_names, output_dir='plots'):
         figure = plt.figure(dpi=300, figsize=(2.62, 0.82))
         ax = figure.add_axes(plt.axes())
         x_data = boots[:, None, ...]
-        figure = plotter.create_save_barplot(ax, figure, "incorrect_true_combined", x_data, roi_names, out_dir=out_path, ylim=(-3, 45))
+        figure = plotter.create_save_boxplot(ax, figure, "_mion_incorrect_true_combined", x_data, roi_names, out_dir=out_path, ylim=(-3, 45))
         figure.show()
 
         boots = bootstrap_by_group(data, roi_names, boot_folds, directive={"test_set": "icc"})  # <rois, folds>
@@ -182,7 +182,7 @@ def generate_decoding_plots(csv_data, roi_names, output_dir='plots'):
         figure = plt.figure(dpi=300, figsize=(2.62, 0.82))
         ax = figure.add_axes(plt.axes())
         x_data = boots[:, None, ...]
-        figure = plotter.create_save_barplot(ax, figure, "incorrect_choice_combined", x_data, roi_names, out_dir=out_path, ylim=(-3, 10))
+        figure = plotter.create_save_boxplot(ax, figure, "_mion_incorrect_choice_combined", x_data, roi_names, out_dir=out_path, ylim=(-3, 15))
         figure.show()
 
 
@@ -201,7 +201,7 @@ def generate_decoding_plots(csv_data, roi_names, output_dir='plots'):
             figure = plt.figure(dpi=300, figsize=(2.62, 0.82))
             ax = figure.add_axes(plt.axes())
             s_id_data = boots[:, None, ...]
-            figure = plotter.create_save_barplot(ax, figure, s + "_shape_identity", s_id_data, roi_names, out_dir=out_path, ylim=(-3, 48), rotate_x_labels=True, set_size=(2.62, 0.62), suppress_x_label=supress_x_label)
+            figure = plotter.create_save_boxplot(ax, figure, s + "_mion_shape_identity", s_id_data, roi_names, out_dir=out_path, ylim=(-3, 45), rotate_x_labels=True, set_size=(2.62, 0.62), suppress_x_label=supress_x_label)
             figure.show()
 
             boots = bootstrap_by_group(data, roi_names, boot_folds,
@@ -213,7 +213,7 @@ def generate_decoding_plots(csv_data, roi_names, output_dir='plots'):
             figure = plt.figure(dpi=300, figsize=(2.62, 0.82))
             ax = figure.add_axes(plt.axes())
             c_id_data = boots[:, None, ...]
-            figure = plotter.create_save_barplot(ax, figure, s + "_color_identity", c_id_data, roi_names, out_dir=out_path, ylim=(-3, 48), rotate_x_labels=True, set_size=(2.62, 0.62), suppress_x_label=supress_x_label)
+            figure = plotter.create_save_boxplot(ax, figure, s + "_mion_color_identity", c_id_data, roi_names, out_dir=out_path, ylim=(-3, 45), rotate_x_labels=True, set_size=(2.62, 0.62), suppress_x_label=supress_x_label)
             figure.show()
 
             boots = bootstrap_by_group(data, roi_names, boot_folds, directive={"subject": s, "train_set": "shape", "test_set": "cross"})  # <rois, folds>
@@ -224,7 +224,7 @@ def generate_decoding_plots(csv_data, roi_names, output_dir='plots'):
             figure = plt.figure(dpi=300, figsize=(2.62, 0.82))
             ax = figure.add_axes(plt.axes())
             x_data = boots[:, None, ...]
-            figure = plotter.create_save_barplot(ax, figure, s + "_color_to_shape_cross", x_data, roi_names, out_dir=out_path, ylim=(-3, 15), rotate_x_labels=True, set_size=(2.62, 0.62), suppress_x_label=supress_x_label)
+            figure = plotter.create_save_boxplot(ax, figure, s + "_mion_color_to_shape_cross", x_data, roi_names, out_dir=out_path, ylim=(-3, 16), rotate_x_labels=True, set_size=(2.62, 0.62), suppress_x_label=supress_x_label)
             figure.show()
 
             boots = bootstrap_by_group(data, roi_names, boot_folds, directive={"subject": s, "train_set": "color", "test_set": "cross"})  # <rois, folds>
@@ -235,7 +235,7 @@ def generate_decoding_plots(csv_data, roi_names, output_dir='plots'):
             figure = plt.figure(dpi=300, figsize=(2.62, 0.82))
             ax = figure.add_axes(plt.axes())
             x_data = boots[:, None, ...]
-            figure = plotter.create_save_barplot(ax, figure, s + "_shape_to_color_cross", x_data, roi_names, out_dir=out_path, ylim=(-3, 15), rotate_x_labels=True, set_size=(2.62, 0.62), suppress_x_label=supress_x_label)
+            figure = plotter.create_save_boxplot(ax, figure, s + "_mion_shape_to_color_cross", x_data, roi_names, out_dir=out_path, ylim=(-3, 16), rotate_x_labels=True, set_size=(2.62, 0.62), suppress_x_label=supress_x_label)
             figure.show()
 
 
@@ -244,8 +244,7 @@ def generate_decoding_plots(csv_data, roi_names, output_dir='plots'):
 
 if __name__ == "__main__":
     # include paths to models for both subjects in list to create combined plots.
-    #model_paths = ["/home/bizon/shared/isilon/PROJECTS/ColorShapeContingency1/MTurk1/analysis/decoding/models/jeeves_FLS___both_IC_2025-04-07_08-09", "/home/bizon/shared/isilon/PROJECTS/ColorShapeContingency1/MTurk1/analysis/decoding/models/wooster_FLS___both_IC_2025-04-06_16-05"]
-    model_paths = ["results/models/jeeves_LSDM", "results/models/wooster_LSDM"]
+    model_paths = ["results/models/jeevesLSDM", "results/models/woosterLSDM"]  # use correct reuslts path
     csv_paths = (os.path.join(m, "results.csv") for m in model_paths)
     csv_data = combine_csv_rows(csv_paths)
     generate_decoding_plots(csv_data, None)

@@ -20,12 +20,12 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import torch
 from neurotools import geometry, util, embed
-from utility import plotter
+from bin import plotter
 
 # make sure text is saved in svgs as text, not path
 plt.rcParams['svg.fonttype'] = 'none'
 
-out_path = "scripts/plots/fig_geometry"
+out_path = "figures/geometry"
 
 # all expected rois and there abreviations
 geom_roi_map = {
@@ -125,7 +125,7 @@ def _set_size(w,h, ax=None):
     ax.figure.set_size_inches(figw, figh)
     return ax
 
-def generate_plots(data, do_mds=True, combined_light_dark=True):
+def generate_plots(data, do_mds=True, combined_light_dark=True, gen_rdm_plots=True):
     """
     """
     if combined_light_dark:
@@ -133,7 +133,7 @@ def generate_plots(data, do_mds=True, combined_light_dark=True):
     else:
         n = ["light", "dark"]
 
-    if do_mds:
+    if do_mds or gen_rdm_plots:
         # these are true hex values of the colors.
         light_colors = ["#eb8ba7", "#caa65a", "#8dba7b", "#56bccd", "#9da3fe", "#e385f0"]
         dark_colors = ["#8d5461", "#7a6634", "#567248", "#327377", "#5f6695", "#88528b"]
@@ -161,34 +161,52 @@ def generate_plots(data, do_mds=True, combined_light_dark=True):
                 rdm = (torch.concatenate(rdata, dim=0))
                 light_rdm, dark_rdm = get_light_dark_rdm(rdm)
                 light_rdm = light_rdm.mean(dim=0, keepdim=True)
-                light_rdm = light_rdm / light_rdm.std()
+                # light_rdm = light_rdm / light_rdm.std()
                 dark_rdm = dark_rdm.mean(dim=0, keepdim=True)
-                dark_rdm = dark_rdm / dark_rdm.std()
+                # dark_rdm = dark_rdm / dark_rdm.std()
                 if combined_light_dark:
-                    do = [light_rdm + dark_rdm]
+                    do = [(light_rdm + dark_rdm) / 2]
                 else:
                     do = [light_rdm, dark_rdm]
+
+
                 for j, rdm in enumerate(do):
                     # we need to separate the rdms into light and dark for comparison
                     # initializes Multi-Dimmensional Scaler
                     fig, ax = plt.subplots(1, )
                     fig.tight_layout()
                     fig.suptitle("_".join(roi) + "_" + set + "_" + n[j])
-                    best_emb = None
-                    best_stress = np.inf
-                    for _ in range(5):
-                        mds = embed.MDScale(6, 2, initialization="xavier")
-                        embedings = mds.fit_transform(rdm.squeeze()).detach().numpy()
-                        if mds.stress_history[-1] < best_stress:
-                            best_emb = embedings
-                            best_stress = mds.stress_history[-1]
-                    ax.scatter(best_emb[:, 0], best_emb[:, 1], s=50, color=light_colors[:len(best_emb)])
-                    ax.margins(x=0.2, y=0.2)
-                    ax.set_xticklabels([])
-                    ax.set_yticklabels([])
-                    ax = _set_size(.5, .5, ax)
-                    #ax[i].set_aspect('equal')
-                    fig.savefig(os.path.join(out_path, "_".join(roi) + "_" + set + "_" + n[j] + "_mds_embedding.svg"))
+
+                    if gen_rdm_plots:
+                        if i == 0:
+                            vmin = .8
+                            vmax = 1.26
+                        if i == 1:
+                            vmin = .9
+                            vmax = 1.2
+                        print(roi, n[j], vmin, vmax)
+                        ax.imshow(util.triu_to_square(rdm, n=6).squeeze().numpy(), vmin=vmin, vmax=vmax)
+                        ax.set_xticklabels([])
+                        ax.set_yticklabels([])
+                        ax = _set_size(.5, .5, ax)
+                        fig.savefig(
+                            os.path.join(out_path, "_".join(roi) + "_" + set + "_" + n[j] + "_rdm_plot.svg"))
+                    if do_mds:
+                        best_emb = None
+                        best_stress = np.inf
+                        for _ in range(10):
+                            mds = embed.MDScale(6, 2, initialization="xavier", struct="dot")
+                            embedings = mds.fit_transform(rdm.squeeze(), max_iter=10000).detach().numpy()
+                            if mds.stress_history[-1] < best_stress:
+                                best_emb = embedings
+                                best_stress = mds.stress_history[-1]
+                        ax.scatter(best_emb[:, 0], best_emb[:, 1], s=50, color=light_colors[:len(best_emb)])
+                        ax.margins(x=0.2, y=0.2)
+                        ax.set_xticklabels([])
+                        ax.set_yticklabels([])
+                        ax = _set_size(.5, .5, ax)
+                        #ax[i].set_aspect('equal')
+                        fig.savefig(os.path.join(out_path, "_".join(roi) + "_" + set + "_" + n[j] + "_mds_embedding.svg"))
 
     # now we compute spearman rho on each fold separately and then get confidence intervals over the corr coefs.
     corr_data = copy.copy(data)
@@ -198,18 +216,21 @@ def generate_plots(data, do_mds=True, combined_light_dark=True):
         light_rdm, dark_rdm = get_light_dark_rdm(x)
 
         if mode == "light":
-            rho = geometry.circle_corr(light_rdm, 6, metric="pearson").detach().numpy()
+            rho = geometry.circle_corr(light_rdm, 6, metric="rho").detach().numpy()
         elif mode == "dark":
-            rho = geometry.circle_corr(dark_rdm, 6, metric="pearson").detach().numpy()
+            rho = geometry.circle_corr(dark_rdm, 6, metric="rho").detach().numpy()
         elif mode == "both":
-            light_rho = geometry.circle_corr(light_rdm, 6, metric="pearson").detach().numpy()
-            dark_rho = geometry.circle_corr(dark_rdm, 6, metric="pearson").detach().numpy()
+            light_rho = geometry.circle_corr(light_rdm, 6, metric="rho").detach().numpy()
+            dark_rho = geometry.circle_corr(dark_rdm, 6, metric="rho").detach().numpy()
             rho = (light_rho + dark_rho) / 2
         else:
             raise ValueError(f"Invalid mode: {mode}. Choose from 'light', 'dark', or 'both'.")
         return rho.squeeze()
+
+
     for m in n:
         lc_data = corr_data.copy()
+
         for roi in geom_roi_map:
             # replace rdms with spearman rho (w/ ties) with ideal circle of items.
             lc_data[roi] = lc_data[roi].apply(lambda x: corr_and_to_numpy(x, mode=m))
@@ -225,20 +246,20 @@ def generate_plots(data, do_mds=True, combined_light_dark=True):
         name = "id_shape_color_spearman_rho_" + m
         if std_rsa:
             name = "STD_RSA_" + name
-        figure = plotter.create_save_barplot(ax, figure, name, boot_data,
-                                             tuple(geom_roi_map.values()), out_dir=out_path, ylim=(-.25, .65))
+        figure = plotter.create_save_boxplot(ax, figure, name, boot_data,
+                                             tuple(geom_roi_map.values()), out_dir=out_path, ylim=(-.3, .65))
         figure.show()
 
 
 
 if __name__ == "__main__":
     std_rsa = False  # False will use LSDM latent states. Setting this to true will use loaded model weight on a standard searchlight RSA
-    model_paths = ["results/models/wooster_LSDM", "results/models/jeeves_LSDM"]
+    model_paths = ["results/models/woosterLSDM", "results/models/jeevesLSDM"]
     if std_rsa:
         csv_paths = (os.path.join(m, "vw_rdm_key.csv") for m in model_paths)
     else:
         csv_paths = (os.path.join(m, "rdm_key.csv") for m in model_paths)
     csv_data = get_csv_data(csv_paths)
-    generate_plots(csv_data, do_mds=False, combined_light_dark=False)
+    generate_plots(csv_data, do_mds=False, combined_light_dark=True, gen_rdm_plots=True)
     plt.show()
 

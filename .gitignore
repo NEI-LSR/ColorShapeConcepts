@@ -4,6 +4,9 @@
 data/*
 results/*
 figures/*
+data_s/*
+extra/*
+*.zip
 
 
 # Byte-compiled / optimized / DLL files
