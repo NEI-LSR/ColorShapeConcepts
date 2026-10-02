@@ -27,13 +27,13 @@ plt.rcParams['lines.linewidth'] = .75 * .4
 probe_task = False
 nafc = [4]
 # Set directories
-data_dir = 'data/learning_data'
+data_dir = 'learning_data'#'data/learning_data'
 out_dir = 'results/learning'
 
 if probe_task:
     bin_size = [1000]
     task_names = ['_Probe_4AFC']
-    plot_size = (3.5, 2)
+    plot_size = (3.3, 2)
     name = 'probe'
 else:
     if len(nafc)==2:
@@ -44,12 +44,12 @@ else:
     elif len(nafc) == 1 and nafc[0] == 4:
         bin_size = [1000]
         task_names = ['_Train_4AFC']
-        plot_size = (2.4,2)#(2.7 , 2)
+        plot_size = (2.25,2)#(2.7 , 2)
         name = 'train4afc'
     else:
         bin_size = [200]
         task_names = ['_Train_2AFC']
-        plot_size = (.7,2)#(.8, 2)
+        plot_size = (.75,2)#(.8, 2)
         name = 'train2afc'
     
 x = []
@@ -82,8 +82,6 @@ for subject in ['w', 'je']:
             id_bin.append(bb)
         
         to_bev = pd.DataFrame({'bin num':id_bin, 'num sessions':bin_how_many})
-       # to_bev.to_csv('/home/ssbeast/Projects/HFTemp/ColorShapeContingency1/analysis/'+subject+'_sessions_bins.csv', index=False)
-        ###
         # For each bin, bootstrap the accuracy 1000 times
         n_boots = 1000
         n_bins = len(binned_trials)
@@ -123,6 +121,7 @@ for subject in ['w', 'je']:
             year_changes = [i for i in range(len(year_labels)) if year_labels[i] != year_labels[i-1]] # which bins are year transitions
             include_years = [year_labels[x] for x in year_changes] # keep those years
             year_bins = [use_x[i] for i in year_changes] # get corresponding trial number (bin) values
+            year_bins[0] = 0 # first bin includes trial 0 so align first year to x=0 rather than first bin
         if j == 1:
             use_x = [x + subj_x[0][-1] for x in use_x]
             year_bins = [x + subj_x[0][-1] for x in year_bins]
@@ -144,33 +143,37 @@ ci_data = [x, y_ci]
 
 colors = ["black", "tab:gray"]#["#D95319", "tab:gray"]
 open_c = False
+year_padding = [.75, 7]
 
 fig, axs = plt.subplots(figsize = plot_size)
 for i in range(len(bin_data)):
     for j in range(len(bin_data[0][i])):
         if open_c:
-            axs.scatter(bin_data[0][i][j], bin_data[1][i][j], facecolor='none', edgecolor=colors[i], s=6, linewidth=.2, rasterized=False)
+            axs.scatter(bin_data[0][i][j], bin_data[1][i][j], facecolor='none', edgecolor=colors[i], s=6, linewidth=.2, rasterized=False, clip_on=False)
         else:
-            axs.scatter(bin_data[0][i][j], bin_data[1][i][j], facecolor=colors[i], edgecolor=colors[i], s=6, linewidth=.5, rasterized=False)
+            axs.scatter(bin_data[0][i][j], bin_data[1][i][j], facecolor=colors[i], edgecolor=colors[i], s=6, linewidth=.5, rasterized=False, clip_on=False)
         if ci_data is not None:
             axs.fill_between(ci_data[0][i][j], np.array(ci_data[1][i][j]).T[0], np.array(ci_data[1][i][j]).T[1], alpha=.2, color=colors[i], rasterized=False) # rasterize CIs else get svg rendering issues
         yr_ax = axs.secondary_xaxis(location=0)
-        yr_ax.set_xticks(year_ticks[i][0],year_ticks[i][1],fontsize=7, color=colors[i], rotation=90)
+        yr_ax.set_xticks(year_ticks[i][0],year_ticks[i][1], fontsize=7, color=colors[i])#, rotation=90)
+        yr_ax.tick_params(axis='x', pad=year_padding[i], length=4., color=colors[i])
+        yr_ax.xaxis.set_ticks_position('top')
+        yr_ax.xaxis.set_label_position('top')
 if np.max(bin_data[0][0][-1]) > 20000:
     xtick = list(range(0, int(np.max(bin_data[0][0][-1])), 20000))
 elif np.max(bin_data[0][0][-1]) < 15000:
     xtick = [0, 10000]
 else:
     xtick = list(range(0, int(np.max(bin_data[0][0][-1])), 1000))
-axs.margins(.05)
+axs.margins(.01)
 
 if len(nafc)==2:
     stop2 = np.max([np.max(bin_data[0][0][0]), np.max(bin_data[0][1][0])])
     start4 = np.min([np.min(bin_data[0][0][1]), np.min(bin_data[0][1][1])])
     stop4 = np.max([np.max(bin_data[0][0][1]), np.max(bin_data[0][1][1])])
 
-axs.tick_params(axis="both", length=2., pad=1)
-axs.tick_params(axis='x', pad=6)
+axs.tick_params(axis="both", length=2., pad=0)
+axs.tick_params(axis='x', pad=1)
 
 ytick = [.25,.5,1.]
 axs.set_yticks(ytick, labels=[str(yt) for yt in ytick], fontsize=7)
@@ -178,7 +181,8 @@ axs.set_xticks(xtick)
 axs.set_xticklabels([int(xt/10000) for xt in xtick],fontsize=7)
 
 fig.tight_layout()
-#fig.savefig(os.path.join(out_dir, name + '_learning.svg'))
+fig.savefig(os.path.join(out_dir, name + '_learning.svg'))
+fig.savefig(os.path.join(out_dir, name + '_learning.png'))
 plt.show()
 plt.close()
     
